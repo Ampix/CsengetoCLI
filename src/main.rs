@@ -1,4 +1,10 @@
+use chrono::{Local, Timelike};
+use rodio::{Decoder, OutputStream, Sink};
 use rusqlite::Connection;
+use std::fs::File;
+use std::io::BufReader;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Debug)]
 struct Hangok {
@@ -15,11 +21,38 @@ fn main() {
     let hangok = get_data(&conn);
     conn.close().expect("Valahogy nem sikerült bezárni");
 
-    for hang in hangok {
-        println!(
-            "id:{} time:{} path:{} status:{}",
-            hang.id, hang.time, hang.path, hang.status
-        )
+    let now = Local::now().time();
+    let mut condition = true;
+    while condition {
+        for hang in &hangok {
+            let mut time_vector: Vec<&str> = hang.time.split(":").collect();
+
+            if let Some(stripped) = time_vector[0].strip_prefix("0") {
+                time_vector[0] = stripped;
+            }
+
+            if let Some(stripped) = time_vector[1].strip_prefix("0") {
+                time_vector[1] = stripped;
+            }
+
+            println!("Mostan {} óra {} perc van", now.hour(), now.minute());
+            println!(
+                "Zene {} óra {} perckor lesz ",
+                time_vector[0], time_vector[1]
+            );
+
+            if time_vector[0] == format!("{}", now.hour())
+                && time_vector[1] == format!("{}", now.minute())
+                && hang.status == 1
+            {
+                println!("idő van");
+
+                play_mp3(&hang.path)
+            }
+        }
+        println!("Ellenőrizve");
+
+        thread::sleep(Duration::from_secs(10));
     }
 }
 
@@ -49,4 +82,17 @@ fn get_data(conn: &Connection) -> Vec<Hangok> {
     }
 
     hangok_lista
+}
+
+fn play_mp3(file_path: &String) {
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+
+    let sink = Sink::try_new(&stream_handle).unwrap();
+
+    let file = File::open(file_path).unwrap();
+    let source = Decoder::new(BufReader::new(file)).unwrap();
+
+    sink.append(source);
+
+    sink.sleep_until_end();
 }
