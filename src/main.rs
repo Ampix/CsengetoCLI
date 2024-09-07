@@ -21,9 +21,10 @@ fn main() {
     let hangok = get_data(&conn);
     conn.close().expect("Valahogy nem sikerült bezárni");
 
-    let now = Local::now().time();
     let mut condition = true;
     while condition {
+        let now = Local::now().time();
+
         for hang in &hangok {
             let mut time_vector: Vec<&str> = hang.time.split(":").collect();
 
