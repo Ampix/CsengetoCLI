@@ -5,7 +5,6 @@ use rusqlite::Connection;
 use std::fs::File;
 use std::io::BufReader;
 
-use std::ops::Index;
 use std::thread;
 use std::time::Duration;
 #[derive(Debug, Clone)]
@@ -21,36 +20,77 @@ fn main() {
 
     setup_db(&conn);
 
-    let mut hangok = get_data(&conn);
+    let hangok = buble_sort(get_data(&conn));
     conn.close().expect("Valahogy nem sikerült bezárni");
     for hang in &hangok {
-        println!("óra{} perc{} ", hang.hour, hang.minute,)
+        println!("{}", hang.hour);
     }
-    hangok = buble_sort(hangok.clone());
-    for hang in &hangok {
-        println!("óra{} perc{}", hang.hour, hang.minute)
-    }
-    let condition = true;
+    let mut condition = true;
 
+    let now = Local::now().time();
+
+    let mut next_hang = hangok[0].clone();
+    let mut next_hang_index = 0;
+    for hang_index in 0..hangok.len() {
+        if compare_hour_time(
+            hangok[hang_index].hour,
+            hangok[hang_index].minute,
+            now.hour().try_into().unwrap(),
+            now.minute().try_into().unwrap(),
+        ) && compare_hour_time(
+            now.hour().try_into().unwrap(),
+            now.minute().try_into().unwrap(),
+            next_hang.hour,
+            next_hang.minute,
+        ) {
+            next_hang_index = hang_index;
+            next_hang = hangok[next_hang_index].clone();
+        }
+    }
+
+    println!("hour {} minute {}", next_hang.hour, next_hang.minute);
+    let mut wait_time = get_time_difference(
+        next_hang.hour,
+        next_hang.minute,
+        0,
+        now.hour().try_into().unwrap(),
+        now.minute().try_into().unwrap(),
+        now.second().try_into().unwrap(),
+    ) - 10;
+
+    println!("{}", wait_time);
+    thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
     while condition {
         let now = Local::now().time();
 
-        for hang in hangok.clone() {
-            println!("Mostan {} óra {} perc van", now.hour(), now.minute());
-            println!("Zene {} óra {} perckor lesz ", hang.hour, hang.minute);
+        println!("Mostan {} óra {} perc van", now.hour(), now.minute());
+        println!(
+            "Zene {} óra {} perckor lesz ",
+            next_hang.hour, next_hang.minute
+        );
 
-            if hang.hour == now.hour().try_into().unwrap()
-                && hang.minute == now.minute().try_into().unwrap()
-                && hang.status == 1
-            {
-                println!("idő van");
-
-                play_mp3(&hang.path)
-            }
+        if next_hang.hour == now.hour().try_into().unwrap()
+            && next_hang.minute == now.minute().try_into().unwrap()
+            && next_hang.status == 1
+        {
+            println!("idő van");
+            play_mp3(&next_hang.path);
+            next_hang_index += 1;
+            next_hang = hangok[next_hang_index].clone();
+            wait_time = get_time_difference(
+                next_hang.hour,
+                next_hang.minute,
+                0,
+                now.hour().try_into().unwrap(),
+                now.minute().try_into().unwrap(),
+                now.second().try_into().unwrap(),
+            ) - 10;
+            thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
         }
+
         println!("Ellenőrizve");
 
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(1));
     }
 }
 
@@ -109,38 +149,41 @@ fn play_mp3(file_path: &String) {
 fn buble_sort(input: Vec<Hangok>) -> Vec<Hangok> {
     let mut output = input.clone();
     let length = output.len();
-    for hang in &output {
-        println!("{}", hang.hour);
-    }
+
     for i in 0..length {
         let mut swapped = false;
 
         for j in 0..length - i - 1 {
-            if compare_hangok(&output[j], &output[j + 1]) {
+            if compare_hour_time(
+                output[j].hour,
+                output[j].minute,
+                output[j + 1].hour,
+                output[j + 1].minute,
+            ) {
                 swapped = true;
-                println!("swapped");
+
                 let temp = output[j].clone();
                 output[j] = output[j + 1].clone();
                 output[j + 1] = temp.clone();
-                for hang in &output {
-                    println!("{}", hang.hour);
-                }
             }
         }
         if swapped == false {
             break;
         }
-        for hang in &input {
-            println!("{}", hang.hour);
-        }
     }
     output
 }
-fn compare_hangok(hang_1: &Hangok, hang_2: &Hangok) -> bool {
-    if hang_1.hour > hang_2.hour {
+
+fn compare_hour_time(
+    bigger_hour: i32,
+    bigger_minute: i32,
+    smaller_hour: i32,
+    smaller_minute: i32,
+) -> bool {
+    if bigger_hour > smaller_hour {
         true
-    } else if hang_2.hour == hang_1.hour {
-        if hang_1.minute > hang_2.minute {
+    } else if smaller_hour == bigger_hour {
+        if bigger_minute > smaller_minute {
             true
         } else {
             false
@@ -148,4 +191,24 @@ fn compare_hangok(hang_1: &Hangok, hang_2: &Hangok) -> bool {
     } else {
         false
     }
+}
+
+fn get_time_difference(
+    bigger_hour: i32,
+    bigger_minute: i32,
+    bigger_second: i32,
+    smaller_hour: i32,
+    smaller_minute: i32,
+    smaller_second: i32,
+) -> i32 {
+    let mut hour_difference = bigger_hour - smaller_hour;
+    let mut minute_difference = bigger_minute - smaller_minute;
+    let second_difference = bigger_second - smaller_second;
+    if second_difference == 0 {
+        minute_difference = -1;
+    }
+    if minute_difference == 0 {
+        hour_difference = -1;
+    }
+    return ((hour_difference * 60 + minute_difference) * 60) + second_difference;
 }
