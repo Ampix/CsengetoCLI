@@ -9,7 +9,6 @@ use std::thread;
 use std::time::Duration;
 #[derive(Debug, Clone)]
 struct Hangok {
-    id: i32,
     hour: i32,
     minute: i32,
     path: String,
@@ -21,81 +20,44 @@ fn main() {
     setup_db(&conn);
 
     let hangok = buble_sort(get_data(&conn));
+    if hangok.clone().len() == 0 {
+        panic!("Nincs hang!")
+    }
     conn.close().expect("Valahogy nem sikerült bezárni");
     for hang in &hangok {
-        println!("{}", hang.hour);
-    }
-    let mut condition = true;
-
-    let now = Local::now().time();
-
-    let mut next_hang = hangok[0].clone();
-    let mut next_hang_index = 0;
-    for hang_index in 0..hangok.len() {
-        if compare_hour_time(
-            hangok[hang_index].hour,
-            hangok[hang_index].minute,
-            now.hour().try_into().unwrap(),
-            now.minute().try_into().unwrap(),
-        ) && compare_hour_time(
-            now.hour().try_into().unwrap(),
-            now.minute().try_into().unwrap(),
-            next_hang.hour,
-            next_hang.minute,
-        ) {
-            next_hang_index = hang_index;
-            next_hang = hangok[next_hang_index].clone();
-        }
-    }
-
-    println!("hour {} minute {}", next_hang.hour, next_hang.minute);
-    let mut wait_time = get_time_difference(
-        next_hang.hour,
-        next_hang.minute,
-        0,
-        now.hour().try_into().unwrap(),
-        now.minute().try_into().unwrap(),
-        now.second().try_into().unwrap(),
-    ) - 10;
-
-    println!("{}", wait_time);
-    thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
-    while condition {
-        let now = Local::now().time();
-
-        println!("Mostan {} óra {} perc van", now.hour(), now.minute());
         println!(
-            "Zene {} óra {} perckor lesz ",
-            next_hang.hour, next_hang.minute
+            "Betöltött hangfájl: {}, {} óra {} perc",
+            hang.path, hang.hour, hang.minute
         );
-
-        if next_hang.hour == now.hour().try_into().unwrap()
-            && next_hang.minute == now.minute().try_into().unwrap()
-            && next_hang.status == 1
-        {
-            println!("idő van");
-            play_mp3(&next_hang.path);
-            next_hang_index += 1;
-            next_hang = hangok[next_hang_index].clone();
-            wait_time = get_time_difference(
-                next_hang.hour,
-                next_hang.minute,
-                0,
-                now.hour().try_into().unwrap(),
-                now.minute().try_into().unwrap(),
-                now.second().try_into().unwrap(),
-            ) - 10;
-            thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
+    }
+    loop {
+        let hangok_copy = hangok.clone();
+        for hangf in hangok_copy {
+            if hangf.status == 1 {
+                fn check(hang: Hangok) {
+                    let now = Local::now();
+                    println!("Most {:?} óra {:?} perc", now.hour(), now.minute());
+                    println!("Következő {:?} óra {:?} perc", hang.hour, hang.minute);
+                    if hang.hour == now.hour().try_into().unwrap()
+                        && hang.minute == now.minute().try_into().unwrap()
+                    {
+                        println!("Szóljon a zene!");
+                        play_sound(&hang.path);
+                    } else {
+                        thread::sleep(Duration::from_secs(5));
+                        check(hang);
+                    }
+                }
+                check(hangf);
+            }
         }
-
-        println!("Ellenőrizve");
-
-        thread::sleep(Duration::from_secs(1));
+        println!("Lejátszási lista vége, 60 sec pihi!");
+        thread::sleep(Duration::from_secs(60));
     }
 }
 
 fn setup_db(conn: &Connection) {
-    conn.execute("CREATE TABLE IF NOT EXISTS csengo (id INTEGER PRIMARY KEY, time TEXT NOT NULL, path TEXT NOT NULL,status BOOLEAN DEFAULT 1 NOT NULL   )", ()).expect("Nem sikerült létrehozni a táblát");
+    conn.execute("CREATE TABLE IF NOT EXISTS csengo (id INTEGER PRIMARY KEY, time TEXT NOT NULL, path TEXT NOT NULL,status BOOLEAN DEFAULT 1 NOT NULL)", ()).expect("Nem sikerült létrehozni a táblát");
 }
 
 fn get_data(conn: &Connection) -> Vec<Hangok> {
@@ -115,7 +77,6 @@ fn get_data(conn: &Connection) -> Vec<Hangok> {
                 time_vector[1] = stripped;
             }
             Ok(Hangok {
-                id: row.get(0)?,
                 hour: time_vector[0].to_string().parse::<i32>().unwrap(),
                 minute: time_vector[1].to_string().parse::<i32>().unwrap(),
                 path: row.get(2)?,
@@ -133,17 +94,18 @@ fn get_data(conn: &Connection) -> Vec<Hangok> {
     hangok_lista
 }
 
-fn play_mp3(file_path: &String) {
+fn play_sound(file_path: &String) {
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
 
     let sink = Sink::try_new(&stream_handle).unwrap();
 
-    let file = File::open(file_path).unwrap();
+    let file = File::open(String::from("sounds/") + file_path.as_str()).unwrap();
     let source = Decoder::new(BufReader::new(file)).unwrap();
 
     sink.append(source);
 
     sink.sleep_until_end();
+    sink.clear();
 }
 
 fn buble_sort(input: Vec<Hangok>) -> Vec<Hangok> {
@@ -191,24 +153,4 @@ fn compare_hour_time(
     } else {
         false
     }
-}
-
-fn get_time_difference(
-    bigger_hour: i32,
-    bigger_minute: i32,
-    bigger_second: i32,
-    smaller_hour: i32,
-    smaller_minute: i32,
-    smaller_second: i32,
-) -> i32 {
-    let mut hour_difference = bigger_hour - smaller_hour;
-    let mut minute_difference = bigger_minute - smaller_minute;
-    let second_difference = bigger_second - smaller_second;
-    if second_difference == 0 {
-        minute_difference = -1;
-    }
-    if minute_difference == 0 {
-        hour_difference = -1;
-    }
-    return ((hour_difference * 60 + minute_difference) * 60) + second_difference;
 }
