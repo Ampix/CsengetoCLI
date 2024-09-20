@@ -24,11 +24,9 @@ fn main() {
         panic!("Nincs hang!")
     }
     conn.close().expect("Valahogy nem sikerült bezárni");
+    println!("Betöltött hangfájlok: ");
     for hang in &hangok {
-        println!(
-            "Betöltött hangfájl: {}, {} óra {} perc",
-            hang.path, hang.hour, hang.minute
-        );
+        println!("{}, {} óra {} perc", hang.path, hang.hour, hang.minute);
     }
     loop {
         let hangok_copy = hangok.clone();
