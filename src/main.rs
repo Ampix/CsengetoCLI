@@ -43,6 +43,7 @@ fn main() {
                     {
                         println!("Szóljon a zene!");
                         play_sound(&hang.path);
+                        println!("Zene vége!");
                     } else {
                         thread::sleep(Duration::from_secs(5));
                         check(hang);
