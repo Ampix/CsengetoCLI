@@ -46,7 +46,7 @@ fn main() {
                         .iter()
                         .position(|x| &x.id == &hangf.id)
                         .unwrap();
-                    println!("index:{}", index);
+                    println!("Index: {}", index);
                     if index == hangok.len() - 1 {
                         check(hangok.clone()[0].clone());
                     }
@@ -82,7 +82,7 @@ fn check(hang: Hangok) {
             wait_time = (24 * 60 * 60) + wait_time;
         }
 
-        println!("várakozok {} másodpercet", wait_time);
+        println!("Várunk {} másodpercet", wait_time);
         thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
         check(hang);
     }
