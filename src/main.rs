@@ -9,6 +9,7 @@ use std::thread;
 use std::time::Duration;
 #[derive(Debug, Clone)]
 struct Hangok {
+    id: i32,
     hour: i32,
     minute: i32,
     path: String,
@@ -30,28 +31,60 @@ fn main() {
     }
     loop {
         let hangok_copy = hangok.clone();
+        let now = Local::now();
+
         for hangf in hangok_copy {
             if hangf.status == 1 {
-                fn check(hang: Hangok) {
-                    let now = Local::now();
-                    println!("Most {:?} óra {:?} perc", now.hour(), now.minute());
-                    println!("Következő {:?} óra {:?} perc", hang.hour, hang.minute);
-                    if hang.hour == now.hour().try_into().unwrap()
-                        && hang.minute == now.minute().try_into().unwrap()
-                    {
-                        println!("Szóljon a zene!");
-                        play_sound(&hang.path);
-                        println!("Zene vége!");
-                    } else {
-                        thread::sleep(Duration::from_secs(5));
-                        check(hang);
+                if compare_hour_time(
+                    now.hour().try_into().unwrap(),
+                    now.minute().try_into().unwrap(),
+                    hangf.hour,
+                    hangf.minute,
+                ) {
+                    let index = hangok
+                        .clone()
+                        .iter()
+                        .position(|x| &x.id == &hangf.id)
+                        .unwrap();
+                    println!("index:{}", index);
+                    if index == hangok.len() - 1 {
+                        check(hangok.clone()[0].clone());
                     }
+                } else {
+                    check(hangf);
                 }
-                check(hangf);
             }
         }
         println!("Lejátszási lista vége, 60 sec pihi!");
         thread::sleep(Duration::from_secs(60));
+    }
+}
+
+fn check(hang: Hangok) {
+    let now = Local::now();
+    println!("Most {:?} óra {:?} perc", now.hour(), now.minute());
+    println!("Következő {:?} óra {:?} perc", hang.hour, hang.minute);
+    if hang.hour == now.hour().try_into().unwrap()
+        && hang.minute == now.minute().try_into().unwrap()
+    {
+        println!("Szóljon a zene!");
+        play_sound(&hang.path);
+        println!("Zene vége!");
+    } else {
+        let next_in_seconds = hang.hour * 3600 + hang.minute * 60;
+        let now_in_second: i32 = (now.hour() * 3600 + now.minute() * 60 + now.second())
+            .try_into()
+            .unwrap();
+
+        let mut wait_time = next_in_seconds - now_in_second;
+
+        if wait_time <= 0 {
+            wait_time = (24 * 60 * 60) + wait_time;
+        }
+
+        println!("várakozok {} másodpercet", wait_time);
+        thread::sleep(Duration::from_secs(wait_time.try_into().unwrap()));
+        check(hang);
     }
 }
 
@@ -76,6 +109,7 @@ fn get_data(conn: &Connection) -> Vec<Hangok> {
                 time_vector[1] = stripped;
             }
             Ok(Hangok {
+                id: row.get(0)?,
                 hour: time_vector[0].to_string().parse::<i32>().unwrap(),
                 minute: time_vector[1].to_string().parse::<i32>().unwrap(),
                 path: row.get(2)?,
@@ -87,7 +121,11 @@ fn get_data(conn: &Connection) -> Vec<Hangok> {
     let mut hangok_lista = vec![];
 
     for hang in hangok {
-        hangok_lista.push(hang.unwrap());
+        if let Ok(hang_value) = hang {
+            if hang_value.status == 1 {
+                hangok_lista.push(hang_value);
+            }
+        }
     }
 
     hangok_lista
