@@ -1,2 +1,2 @@
 cargo build --release
-wsl -e bash -lic "cargo build --release"
+wsl -d Ubuntu -e bash -lic "cargo build --release"
