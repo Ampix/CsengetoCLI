@@ -1,12 +1,14 @@
 use chrono::{Local, Timelike};
 
 use rodio::{Decoder, OutputStream, Sink};
-use rusqlite::Connection;
 use std::fs::File;
 use std::io::BufReader;
 
 use std::thread;
 use std::time::Duration;
+
+mod config;
+
 #[derive(Debug, Clone)]
 struct Hangok {
     id: i32,
