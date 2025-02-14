@@ -1,3 +1,4 @@
+use checker::watch_config_file;
 use chrono::{Local, Timelike};
 
 use config::{check_config, load_config, MainConfig};
@@ -14,6 +15,7 @@ lazy_static! {
     pub static ref MAIN_CONFIG: RwLock<MainConfig> = RwLock::new(load_config());
 }
 
+mod checker;
 mod config;
 
 #[derive(Debug, Clone)]
@@ -27,6 +29,7 @@ struct Hangok {
 }
 fn main() {
     check_config();
+    watch_config_file();
     let hangok = buble_sort(get_data());
     if hangok.clone().len() == 0 {
         panic!("Nincs hang!")
