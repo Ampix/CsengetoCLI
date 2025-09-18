@@ -50,7 +50,7 @@ jobs:
             echo "${{ steps.get_version_linux.outputs.cVersion }}" > version.txt
           else
             echo "${{ steps.get_version_win.outputs.cVersion }}" > version.txt
-            
+          fi
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
