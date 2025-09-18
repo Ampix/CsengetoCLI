@@ -1,8 +1,5 @@
 name: CsengetoCLI Release
 
-env:
-  REPO_LINK: https://github.com/${{ github.repository }}
-
 on:
   push:
     branches: ["release"]
