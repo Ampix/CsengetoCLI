@@ -34,23 +34,11 @@ jobs:
         if: runner.os == 'Linux'
         run: echo "cVersion=$(grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}')" >> $GITHUB_OUTPUT
 
-      # Windows: Extract version and set output
-      - name: Get version (Windows)
-        id: get_version_win
-        if: runner.os == 'Windows'
-        run: |
-          $content = Get-Content Cargo.toml
-          $versionLine = $content | Select-String '^version'
-          $version = $versionLine -replace '.*"(.*)".*', '$1'
-          echo "cVersion=$version" >> $env:GITHUB_OUTPUT
-
       - name: Write version.txt
+        if: runner.os == 'Linux'
         run: |
-          if [ "${{ runner.os }}" = "Linux" ]; then
             echo "${{ steps.get_version_linux.outputs.cVersion }}" > version.txt
-          else
-            echo "${{ steps.get_version_win.outputs.cVersion }}" > version.txt
-          fi
+          
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
@@ -59,6 +47,6 @@ jobs:
           files: |
             target/release/csengeto_cli${{ runner.os == 'Windows' && '.exe' || '' }}
             target/release/launcher${{ runner.os == 'Windows' && '.exe' || '' }}
-            version.txt
+            ${{ runner.os == 'Linux' && 'version.txt' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
