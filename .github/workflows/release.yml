@@ -1,0 +1,41 @@
+name: CsengetoCLI Release
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          override-file: Cargo.toml
+
+      - name: Build the project
+        env:
+          REPO_LINK: ${{ secrets.REPO_LINK }}
+        run: cargo build --release
+
+      - name: Generate version.txt
+        run: |
+          grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}' > version.txt
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: |
+            target/release/csengeto_cli${{ runner.os == 'Windows' && '.exe' || '' }}
+            target/release/launcher${{ runner.os == 'Windows' && '.exe' || '' }}
+            version.txt
