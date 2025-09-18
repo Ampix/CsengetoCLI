@@ -23,7 +23,7 @@ struct Hangok {
     minute: u32,
     sound_id: i8,
     display: String,
-    group: i8,
+    groups: Vec<i8>,
 }
 fn main() {
     check_config();
@@ -38,14 +38,14 @@ fn main() {
             hang.display,
             hang.hour,
             hang.minute,
-            group_is_enabled(hang.group)
+            hang.groups.iter().any(|h| group_is_enabled(h))
         );
     }
     loop {
         let hangok_copy = hangok.clone();
         let now = Local::now();
         for hangf in hangok_copy {
-            if group_is_enabled(hangf.group) {
+            if hangf.groups.iter().any(|h| group_is_enabled(h)) {
                 if compare_hour_time(
                     now.hour().try_into().unwrap(),
                     now.minute().try_into().unwrap(),
@@ -104,9 +104,9 @@ fn get_sound_by_id(id: i8) -> String {
     return sound.unwrap().path.clone();
 }
 
-fn group_is_enabled(id: i8) -> bool {
+fn group_is_enabled(id: &i8) -> bool {
     let config = MAIN_CONFIG.read().unwrap();
-    let config = config.groups.iter().find(|p| p.id == id);
+    let config = config.groups.iter().find(|p| &p.id == id);
     return config.unwrap().enabled;
 }
 
@@ -121,7 +121,7 @@ fn get_data() -> Vec<Hangok> {
                 hour: hang.hour,
                 minute: hang.minute,
                 sound_id: hang.sound_id,
-                group: hang.group_id,
+                groups: hang.groups_id.clone(),
                 display: hang.display.clone(),
             }
         })

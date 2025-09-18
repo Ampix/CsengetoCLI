@@ -34,7 +34,7 @@ pub struct SoundsConfig {
 pub struct TimesConfig {
     pub id: i8,
     pub display: String,
-    pub group_id: i8,
+    pub groups_id: Vec<i8>,
     pub sound_id: i8,
     pub hour: u32,
     pub minute: u32,
