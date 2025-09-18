@@ -1,33 +1,60 @@
-use std::{
-    env::consts::OS,
-    process::{Child, Command},
-};
+use std::{env::consts::OS, fs::File, process::Command};
 
-#[tokio::main]
-async fn main() -> Child {
+fn main() {
     let repo_link = option_env!("REPO_LINK").unwrap_or("unknown");
     println!("Repo link: {}", repo_link);
-    let version_get = reqwest::get(format!(
+    let version_get = reqwest::blocking::get(format!(
         "{}/releases/latest/download/version.txt",
         repo_link
-    ))
-    .await;
+    ));
     if version_get.is_ok() {
         let current_version = env!("CARGO_PKG_VERSION");
-        println!("Current version: {}", current_version);
-        let ver = version_get.unwrap().text().await.unwrap();
+        println!("Current version: {}.", current_version);
+        let ver = version_get.unwrap().text().unwrap();
+        println!("Upstream version: {}.", ver);
         if current_version.to_string() != ver {
+            println!("New update available, downloading it...");
+            let mut launcher_get = reqwest::blocking::get(format!(
+                "{}/releases/latest/download/launcher{}",
+                repo_link,
+                if OS == "windows" { ".exe" } else { "" }
+            ))
+            .unwrap();
+            let mut main_get = reqwest::blocking::get(format!(
+                "{}/releases/latest/download/csengeto_cli{}",
+                repo_link,
+                if OS == "windows" { ".exe" } else { "" }
+            ))
+            .unwrap();
+
+            let mut cli = File::create(if OS == "windows" {
+                ".\\csengeto_cli.exe"
+            } else {
+                "./csengeto_cli"
+            })
+            .unwrap();
+
+            let mut launcher = File::create(if OS == "windows" {
+                ".\\launcher_new.exe"
+            } else {
+                "./launcher_new"
+            })
+            .unwrap();
+            main_get.copy_to(&mut cli).unwrap();
+            launcher_get.copy_to(&mut launcher).unwrap();
+            println!("Download done, starting new...")
         } else {
             println!("No update found, starting current...")
         }
     } else {
         println!("Version check failed, starting current version...");
     }
-    return Command::new(if OS == "windows" {
-        "csengeto_cli.exe"
+    Command::new(if OS == "windows" {
+        ".\\csengeto_cli.exe"
     } else {
         "./csengeto_cli"
     })
     .spawn()
     .unwrap();
+    return;
 }
