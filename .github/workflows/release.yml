@@ -26,7 +26,7 @@ jobs:
 
       - name: Build the project
         env:
-          REPO_LINK: ${{ env.REPO_LINK }}
+          REPO_LINK: ${{ github.server_url }}/${{ github.repository }}
         run: cargo build --release
 
       - name: Get version (Linux)

@@ -1,8 +1,11 @@
 use std::{env::consts::OS, fs::File, path::Path, process::Command};
 
 fn main() {
+    println!("=== Launcher ===");
     let repo_link = option_env!("REPO_LINK").unwrap_or("unknown");
-    println!("Repo link: {}", repo_link);
+    println!("Repo link: {}\n", repo_link);
+    let current_version = env!("CARGO_PKG_VERSION");
+    println!("Current version: {}.", current_version);
     let version_get = reqwest::blocking::get(format!(
         "{}/releases/latest/download/version.txt",
         repo_link
@@ -13,8 +16,6 @@ fn main() {
         "./csengeto_cli"
     });
     if version_get.is_ok() {
-        let current_version = env!("CARGO_PKG_VERSION");
-        println!("Current version: {}.", current_version);
         let ver = version_get.unwrap().text().unwrap();
         println!("Upstream version: {}.", ver);
         if (current_version.to_string() != ver) || !cli.exists() {
