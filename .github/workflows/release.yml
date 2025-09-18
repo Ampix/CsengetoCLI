@@ -32,22 +32,29 @@ jobs:
           REPO_LINK: ${{ env.REPO_LINK }}
         run: cargo build --release
 
-      - name: Generate version.txt (Linux)
+      - name: Get version (Linux)
+        id: get_version
         if: runner.os == 'Linux'
-        run: grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}' > version.txt
+        run: echo "cVersion=$(grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}')" >> $GITHUB_OUTPUT
 
-      - name: Generate version.txt (Windows)
+      # Windows: Extract version and set output
+      - name: Get version (Windows)
+        id: get_version
         if: runner.os == 'Windows'
         run: |
           $content = Get-Content Cargo.toml
           $versionLine = $content | Select-String '^version'
           $version = $versionLine -replace '.*"(.*)".*', '$1'
-          Set-Content -Path version.txt -Value $version
+          echo "cVersion=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Write version.txt
+        run: echo "${{ steps.get_version.outputs.cVersion }}" > version.txt
 
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          tag_name: v${{ steps.get_version.outputs.cVersion }}
           files: |
             target/release/csengeto_cli${{ runner.os == 'Windows' && '.exe' || '' }}
             target/release/launcher${{ runner.os == 'Windows' && '.exe' || '' }}
