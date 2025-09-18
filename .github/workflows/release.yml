@@ -1,5 +1,8 @@
 name: CsengetoCLI Release
 
+env:
+  REPO_LINK: https://github.com/${{ github.repository }}
+
 on:
   push:
     branches: ["main"]
@@ -26,7 +29,7 @@ jobs:
 
       - name: Build the project
         env:
-          REPO_LINK: ${{ secrets.REPO_LINK }}
+          REPO_LINK: ${{ env.REPO_LINK }}
         run: cargo build --release
 
       - name: Generate version.txt (Linux)
