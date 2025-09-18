@@ -18,7 +18,7 @@ fn main() {
     if version_get.is_ok() {
         let ver = version_get.unwrap().text().unwrap();
         println!("Upstream version: {}.", ver);
-        if (current_version.to_string() != ver) || !cli.exists() {
+        if (current_version.to_string() != ver.replace(" ", "")) || !cli.exists() {
             println!("New update available, downloading it...");
             let mut launcher_get = reqwest::blocking::get(format!(
                 "{}/releases/latest/download/launcher{}",
