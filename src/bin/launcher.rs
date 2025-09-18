@@ -1,4 +1,4 @@
-use std::{env::consts::OS, fs::File, process::Command};
+use std::{env::consts::OS, fs::File, path::Path, process::Command};
 
 fn main() {
     let repo_link = option_env!("REPO_LINK").unwrap_or("unknown");
@@ -7,12 +7,17 @@ fn main() {
         "{}/releases/latest/download/version.txt",
         repo_link
     ));
+    let cli = Path::new(if OS == "windows" {
+        ".\\csengeto_cli.exe"
+    } else {
+        "./csengeto_cli"
+    });
     if version_get.is_ok() {
         let current_version = env!("CARGO_PKG_VERSION");
         println!("Current version: {}.", current_version);
         let ver = version_get.unwrap().text().unwrap();
         println!("Upstream version: {}.", ver);
-        if current_version.to_string() != ver {
+        if (current_version.to_string() != ver) || !cli.exists() {
             println!("New update available, downloading it...");
             let mut launcher_get = reqwest::blocking::get(format!(
                 "{}/releases/latest/download/launcher{}",
@@ -43,12 +48,9 @@ fn main() {
             main_get.copy_to(&mut cli).unwrap();
             launcher_get.copy_to(&mut launcher).unwrap();
             println!("Download done, starting new...")
-        } else {
-            println!("No update found, starting current...")
         }
-    } else {
-        println!("Version check failed, starting current version...");
     }
+    println!("=== CLI ===");
     Command::new(if OS == "windows" {
         ".\\csengeto_cli.exe"
     } else {
