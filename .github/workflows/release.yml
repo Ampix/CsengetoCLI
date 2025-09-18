@@ -32,7 +32,7 @@ jobs:
           grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}' > version.txt
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: binaries
           path: |
