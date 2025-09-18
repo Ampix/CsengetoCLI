@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
       - name: Install libasound2 (Linux only)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
@@ -29,15 +29,25 @@ jobs:
           REPO_LINK: ${{ secrets.REPO_LINK }}
         run: cargo build --release
 
-      - name: Generate version.txt
-        run: |
-          grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}' > version.txt
+      - name: Generate version.txt (Linux)
+        if: runner.os == 'Linux'
+        run: grep '^version' Cargo.toml | head -n1 | awk -F\" '{print $2}' > version.txt
 
-      - name: Upload binaries
-        uses: actions/upload-artifact@v4
+      - name: Generate version.txt (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $content = Get-Content Cargo.toml
+          $versionLine = $content | Select-String '^version'
+          $version = $versionLine -replace '.*"(.*)".*', '$1'
+          Set-Content -Path version.txt -Value $version
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
         with:
-          name: binaries
-          path: |
+          draft: true
+          files: |
             target/release/csengeto_cli${{ runner.os == 'Windows' && '.exe' || '' }}
             target/release/launcher${{ runner.os == 'Windows' && '.exe' || '' }}
             version.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
